@@ -1,0 +1,3 @@
+[submodule "ivanya_python"]
+	path = ivanya_python
+	url = https://github.com/vanya-antonov/ivanya_python
