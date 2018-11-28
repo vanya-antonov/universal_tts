@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-# $Id: run_triplexator.py 2943 2018-10-22 16:27:18Z antonov $
-
-###
-# Ivan Antonov (vanya.antonov@gmail.com)
-#
-
 import sys
 import os
 import re
@@ -21,7 +15,9 @@ logging.basicConfig(level=logging.INFO)
 import tempfile, shutil    # To create tmp dir: https://stackoverflow.com/a/3223615/310453
 import subprocess          # For triplexator run
 
-from mylib.baseutilbio import fasta2dict
+from os.path import dirname
+sys.path.append('../ivanya_python/lib')
+from ivanya.bio.biopython import fasta2dict
 
 ###
 # SUBROUTINES
