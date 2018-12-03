@@ -1,3 +1,6 @@
+# Ignore Mac DS_Store files: https://stackoverflow.com/a/29260747/310453
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
