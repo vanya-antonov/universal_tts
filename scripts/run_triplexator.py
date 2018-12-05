@@ -1,36 +1,40 @@
 #!/usr/bin/env python3
 
-import sys
+# Copyright 2018 by Ivan Antonov. All rights reserved.
+
+"""Run Triplexator for given RNA and DNA sequences and output all predictions."""
+
+import argparse
+import logging
 import os
 import re
-import argparse
-from pprint import pprint
-from warnings import warn
-from math import log10
-
-import logging    # https://www.youtube.com/watch?v=-RcDmGNSuvU
-logging.basicConfig(level=logging.INFO)
-#logging.basicConfig(level=logging.DEBUG)
-
-import tempfile, shutil    # To create tmp dir: https://stackoverflow.com/a/3223615/310453
+import shutil
 import subprocess          # For triplexator run
+import tempfile
 
-from os.path import dirname
-sys.path.append('../ivanya_python/lib')
-from ivanya.bio.biopython import fasta2dict
+from Bio import SeqIO
 
-###
-# SUBROUTINES
-def run(args):
-    all_tpx = run_triplexator(args)
-    summary = read_tpx_summary('triplex_search.summary', args)    
-    
-    rna_dict = fasta2dict(args.rna_fn)
-    dna_dict = fasta2dict(args.dna_fn)
-    output(all_tpx, summary, rna_dict, dna_dict, args)
+
+def main(args):
+    if args.quiet:
+        logging.getLogger().setLevel(logging.WARNING)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
+    # Create tmp folder for triplexator output files
+    tmp_dir = tempfile.mkdtemp(prefix='__TPX.', dir=os.getcwd())
+    prm_str = args.prm + ' -od ' + tmp_dir
+    all_tpx = run_triplexator(args.rna_fn, args.dna_fn, prm_str)
+    summary = read_tpx_summary(os.path.join(tmp_dir, 'triplex_search.summary'))
+    shutil.rmtree(tmp_dir)    # remove tmp folder
+
+    output(args.rna_fn, args.dna_fn, all_tpx, summary)
+
     if args.tpx_cov is not None:
+        raise NotImplementedError("The function needs to be updated")
         save_tpx_coverage(all_tpx, summary, rna_dict, dna_dict, args)
     if args.all_tpx is not None:
+        raise NotImplementedError("The function needs to be updated")
         save_all_tpx_info(all_tpx, args)
 
 def save_all_tpx_info(all_pairs, args):
@@ -79,99 +83,83 @@ def _save_tpx_coverage_for_pair_and_type(key, seq_type, summary, all_tpx, seq_di
     
     subprocess.run('bedtools genomecov -d -i ' + bed_fn + ' -g ' + sizes_fn + ' > ' + out_fn, shell=True)
 
-def output(all_tpx, summary, rna_dict, dna_dict, args):
-    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len', 'Num_tpx', 'Max_score', 'Sum_score',  't_pot', 'log_tpot']
+def output(rna_fn, dna_fn, all_tpx, summary):
+    "Prints triplexator predictions for ALL(!) RNA-DNA pairs."
+    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len',
+                'Num_tpx', 'Max_score', 'Sum_score', 't_pot']
     print('\t'.join(head_arr))
-    for tpx in sorted(summary.values(), reverse=True, key=lambda k: k['t_pot']):
-        rna_seq = rna_dict.get(tpx['Sequence-ID'], '')
-        dna_seq = dna_dict.get(tpx['Duplex-ID'],   '')
-        sites = all_tpx[ tpx['key'] ]
-        scores = [int(d['Score']) for d in sites]
-        to_print = [
-            tpx['Sequence-ID'], tpx['Duplex-ID'], str(len(rna_seq)), str(len(dna_seq)),
-            str(len(sites)), str(max(scores)), str(sum(scores)), str(tpx['t_pot']),
-            '%.4f' % tpx['log_tpot'], 
-        ]
-        print('\t'.join(to_print))
-    
-    # Output pairs without triplexes at the end
-    for rna_name in rna_dict.keys():
-        for dna_name in dna_dict.keys():
-            key = rna_name + args.delim + dna_name
-            if(key in summary.keys()): continue
-            rna_seq  = rna_dict[rna_name]
-            dna_seq  = dna_dict[dna_name]
-            to_print = [rna_name, dna_name, str(len(rna_seq)), str(len(dna_seq)), '0','0','0','0','0']
-            print('\t'.join(to_print))
+    for rna in SeqIO.parse(rna_fn, "fasta"):
+        for dna in SeqIO.parse(dna_fn, "fasta"):
+            to_print = {'RNA': rna.id, 'DNA': dna.id, 'RNA_len': len(rna.seq),
+                        'DNA_len': len(dna.seq), 'Num_tpx': 0, 'Max_score': 0,
+                        'Sum_score': 0, 't_pot': 0}
+            info = summary.get(rna.id, {}).get(dna.id, None)
+            tpx = all_tpx.get(rna.id, {}).get(dna.id, [])
+            if info is None:
+                # No predictions for this RNA-DNA pair
+                print('\t'.join([str(to_print[k]) for k in head_arr]))
+                continue
+            scores = [int(d['Score']) for d in tpx]
+            to_print['Num_tpx'] = len(scores)
+            to_print['Max_score'] = max(scores)
+            to_print['Sum_score'] = sum(scores)
+            to_print['t_pot'] = info['Total (rel)']
+            print('\t'.join([str(to_print[k]) for k in head_arr]))
 
-def run_triplexator(args):
+def run_triplexator(rna_fn, dna_fn, prm):
     # https://stackoverflow.com/a/18244485/310453
-    cmd_str = 'triplexator ' + args.prm + ' -ss ' + args.rna_fn + ' -ds ' + args.dna_fn
+    cmd_str = 'triplexator ' + prm + ' -ss ' + rna_fn + ' -ds ' + dna_fn
     out_arr = subprocess.getoutput(cmd_str).splitlines()
-    
-    head_str = out_arr.pop(0)          # get the header row
-    head_str = head_str.lstrip('# ')   # remove the comment line
+
+    # get the header row & remove the comment char
+    head_str = out_arr.pop(0).lstrip('# ')
     head_arr = head_str.split('\t')
-    
+
     all_tpx = {}
     for line in out_arr:
         vals = line.split('\t')
         if( len(vals) != len(head_arr) ):
-            warn('Something is wrong: len(vals) != len(head_arr)')
+            logging.warning('Something is wrong: len(vals) != len(head_arr)')
             continue
-        tpx  = dict( zip(head_arr, vals) )
-        key  = tpx['Sequence-ID'] + args.delim + tpx['Duplex-ID']
-        if(key not in all_tpx):
-            all_tpx[key] = []
-        all_tpx[key].append(tpx)
+        tpx = dict(zip(head_arr, vals))
+        rna_id, dna_id = tpx['Sequence-ID'], tpx['Duplex-ID']
+        all_tpx.setdefault(rna_id, {}).setdefault(dna_id, []).append(tpx)
     return all_tpx
 
-def read_tpx_summary(fn, args):
+def read_tpx_summary(fn):
     with open(fn) as f:
-        head_str = f.readline()          # Skip the header: https://stackoverflow.com/a/4796785/310453
-        head_str = head_str.lstrip('# ')   # remove the comment line
-        head_arr = head_str.split('\t')
-        
+        # Get the header fields as list
+        head_arr = f.readline().lstrip('# ').split('\t')
         summary = {}
         for line in f:
             vals = re.split('\s+', line)
-            tpx  = dict( zip(head_arr, vals) )
-            tpx['t_pot'] = float( tpx['Total (rel)'] )
-            tpx['log_tpot'] = log10(tpx['t_pot'] * 10**6 + 1)
-
-            key  = tpx['Sequence-ID'] + args.delim + tpx['Duplex-ID']
-            tpx['key'] = key
-            
-            if(key in summary):
-                warn("The key '%s' is duplicated" % key)
-            else:
-                summary[key] = tpx
+            tpx = dict(zip(head_arr, vals))
+            rna_id, dna_id = tpx['Sequence-ID'], tpx['Duplex-ID']
+            if summary.get(rna_id, {}).get(dna_id, None) is not None:
+                logging.warning("The key '%s' is duplicated in file '%s'" %
+                                (key, fn))
+                continue
+            summary.setdefault(rna_id, {})[dna_id] = tpx
     return summary
 
-###
-# Parse command line arguments: https://stackoverflow.com/a/30493366/310453
-parser = argparse.ArgumentParser(description='Run the Triplexator and process its output')
-parser.add_argument('rna_fn',   metavar='RNA.fna',    help='corresponds to the -ss Triplexator option')
-parser.add_argument('dna_fn',   metavar='DNA.fna',    help='corresponds to the -ds Triplexator option')
-parser.add_argument('--prm',    metavar='STR',        help='specify additional Triplexator params', default='')
-parser.add_argument('--tpx_cov', metavar='PREFIX', help='compute triplex coverage info  for both RNA and DNA')
-parser.add_argument('--all_tpx', metavar='FN.txt', help='save info about all the predicted triplexes')
-parser.add_argument('--silent', action ='store_true', help='')
-args = parser.parse_args()
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run the Triplexator and process its output')
+    parser.add_argument('rna_fn', metavar='RNA.fna',
+                        help='corresponds to the -ss Triplexator option')
+    parser.add_argument('dna_fn', metavar='DNA.fna',
+                        help='corresponds to the -ds Triplexator option')
+    parser.add_argument('--prm', metavar='STR', default='',
+                        help="additional Triplexator params "
+                       "(e.g. '-l 10 -e 10 -fr off')")
+    parser.add_argument('--tpx_cov', metavar='PREFIX',
+                        help='compute triplex coverage info for both RNA and DNA')
+    parser.add_argument('--all_tpx', metavar='FN.txt',
+                        help='save info about all the predicted triplexes')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help="do not write info messages to stderr")
+    return parser.parse_args()
 
-###
-#my $START_TIME = time;
-
-args.rna_fn = os.path.abspath(args.rna_fn)
-args.dna_fn = os.path.abspath(args.dna_fn)
-args.delim = '_vs_'
-args.init_cwd = os.getcwd()
-args.tmp_dir = tempfile.mkdtemp(prefix='__TPX.', dir=os.getcwd())
-
-os.chdir(args.tmp_dir)
-run( args )
-shutil.rmtree(args.tmp_dir)    # remove tmp folder
-
-#warn "\nElapsed time: ".(time-$START_TIME)." sec\n" if !$SILENT;
-###
+if __name__ == '__main__':
+    main(parse_args())
 
