@@ -26,7 +26,8 @@ def main(args):
     prm_str = args.prm + ' -od ' + tmp_dir
     all_tpx = run_triplexator(args.rna_fn, args.dna_fn, prm_str)
     summary = read_tpx_summary(os.path.join(tmp_dir, 'triplex_search.summary'))
-    shutil.rmtree(tmp_dir)    # remove tmp folder
+    if not args.keep:
+        shutil.rmtree(tmp_dir)    # remove tmp folder
 
     output(args.rna_fn, args.dna_fn, all_tpx, summary)
 
@@ -85,14 +86,14 @@ def _save_tpx_coverage_for_pair_and_type(key, seq_type, summary, all_tpx, seq_di
 
 def output(rna_fn, dna_fn, all_tpx, summary):
     "Prints triplexator predictions for ALL(!) RNA-DNA pairs."
-    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len',
-                'Num_tpx', 'Max_score', 'Sum_score', 't_pot']
+    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len', 'Num_tpx', 'Num_tpx_abs',
+                'Max_score', 'Sum_score', 't_pot']
     print('\t'.join(head_arr))
     for rna in SeqIO.parse(rna_fn, "fasta"):
         for dna in SeqIO.parse(dna_fn, "fasta"):
             to_print = {'RNA': rna.id, 'DNA': dna.id, 'RNA_len': len(rna.seq),
-                        'DNA_len': len(dna.seq), 'Num_tpx': 0, 'Max_score': 0,
-                        'Sum_score': 0, 't_pot': 0}
+                        'DNA_len': len(dna.seq), 'Num_tpx': 0, 'Num_tpx_abs': 0,
+                        'Max_score': 0, 'Sum_score': 0, 't_pot': 0}
             info = summary.get(rna.id, {}).get(dna.id, None)
             tpx = all_tpx.get(rna.id, {}).get(dna.id, [])
             if info is None:
@@ -101,6 +102,7 @@ def output(rna_fn, dna_fn, all_tpx, summary):
                 continue
             scores = [int(d['Score']) for d in tpx]
             to_print['Num_tpx'] = len(scores)
+            to_print['Num_tpx_abs'] = info['Total (abs)']
             to_print['Max_score'] = max(scores)
             to_print['Sum_score'] = sum(scores)
             to_print['t_pot'] = info['Total (rel)']
@@ -156,6 +158,8 @@ def parse_args():
                         help='compute triplex coverage info for both RNA and DNA')
     parser.add_argument('--all_tpx', metavar='FN.txt',
                         help='save info about all the predicted triplexes')
+    parser.add_argument('--keep', action='store_true',
+                        help="do not remove tmp folder")
     parser.add_argument('-q', '--quiet', action='store_true',
                         help="do not write info messages to stderr")
     return parser.parse_args()
