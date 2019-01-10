@@ -4,6 +4,8 @@
 # Ignore Mac Icon files: https://stackoverflow.com/a/33974028/310453
 Icon[]
 
+# Ignore R-history files
+.Rhistory
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
