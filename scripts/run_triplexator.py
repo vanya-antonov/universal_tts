@@ -27,13 +27,14 @@ def main(args):
     # Create tmp folder for triplexator output files
     tmp_dir = tempfile.mkdtemp(prefix='__TPX.', dir=os.getcwd())
     prm_with_od = args.prm + ' -od ' + tmp_dir
-    all_tpx = run_triplexator(args.rna_fn, args.dna_fn, prm_with_od)
+    all_scores = run_triplexator(args.rna_fn, args.dna_fn, prm_with_od)
     summary = read_tpx_summary(os.path.join(tmp_dir, 'triplex_search.summary'))
     if not args.keep:
         shutil.rmtree(tmp_dir)    # remove tmp folder
 
-    output(args.rna_fn, args.dna_fn, all_tpx, summary, args.prm)
+    output(args.rna_fn, args.dna_fn, all_scores, summary, args.prm)
 
+    # Move it to a separate script?
     if args.tpx_cov is not None:
         raise NotImplementedError("The function needs to be updated")
         save_tpx_coverage(all_tpx, summary, rna_dict, dna_dict, args)
@@ -41,28 +42,29 @@ def main(args):
         raise NotImplementedError("The function needs to be updated")
         save_all_tpx_info(all_tpx, args)
 
-def output(rna_fn, dna_fn, all_tpx, summary, prm_str):
+def output(rna_fn, dna_fn, all_scores, summary, prm_str):
     "Prints triplexator predictions for ALL(!) RNA-DNA pairs."
-    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len', 'Max_score', 'Sum_score',
-                't_pot', 'Num_tpx', 'Num_tpx_abs', 'pvalue']
+    head_arr = ['RNA', 'DNA', 'RNA_len', 'DNA_len',
+                'Num_scores', 'Max_score', 'Sum_score',
+                't_pot', 'Num_tpx_abs', 'pvalue']
     print('\t'.join(head_arr))
     for rna in SeqIO.parse(rna_fn, "fasta"):
         for dna in SeqIO.parse(dna_fn, "fasta"):
-            to_print = {'RNA': rna.id, 'DNA': dna.id, 'RNA_len': len(rna.seq),
-                        'DNA_len': len(dna.seq), 'Num_tpx': 0, 'Num_tpx_abs': 0,
-                        'Max_score': 0, 'Sum_score': 0, 't_pot': 0, 'pvalue': 1}
+            to_print = {'RNA': rna.id, 'DNA': dna.id,
+                        'RNA_len': len(rna.seq), 'DNA_len': len(dna.seq),
+                        'Num_scores': 0, 'Max_score': 0, 'Sum_score': 0,
+                        'Num_tpx_abs': 0, 't_pot': 0, 'pvalue': 1}
             info = summary.get(rna.id, {}).get(dna.id, None)
-            tpx = all_tpx.get(rna.id, {}).get(dna.id, [])
             if info is None:
                 # No predictions for this RNA-DNA pair
                 print('\t'.join([str(to_print[k]) for k in head_arr]))
                 continue
 
-            scores = [int(d['Score']) for d in tpx]
-            to_print['Num_tpx'] = len(scores)
-            to_print['Num_tpx_abs'] = int(info['Total (abs)'])
+            scores = all_scores.get(rna.id, {}).get(dna.id, [])
+            to_print['Num_scores'] = len(scores)
             to_print['Max_score'] = max(scores)
             to_print['Sum_score'] = sum(scores)
+            to_print['Num_tpx_abs'] = int(info['Total (abs)'])
             to_print['t_pot'] = info['Total (rel)']
             to_print['pvalue'] = '%.1e' % compute_pvalue(
                 len(rna.seq), len(dna.seq), to_print['Num_tpx_abs'], prm_str)
@@ -74,16 +76,11 @@ def compute_pvalue(rna_len, dna_len, num_tpx, prm_str):
                         "unsupported set of params '%s'" % prm_str)
         return -1
 
-    meg3_len = 1595
-    if abs(rna_len - meg3_len) > 300:
-        logging.warning("Can't compute pvalue because query RNA length = '%s'" %
-                        rna_len)
-        return -1
-
     # R: coef(lambda_lm)
-    poisson_lambda = 0.031275081 + 0.001816926*dna_len
+    p_lambda = -0.6884666667 + 0.00053712*rna_len + 0.0006028061*dna_len
 
-    return poisson.sf(num_tpx, poisson_lambda)
+    # P(X = x) (i.e. PMF) is added because we want to compute P(X >= x)
+    return poisson.pmf(num_tpx, p_lambda) + poisson.sf(num_tpx, p_lambda)
 
 def run_triplexator(rna_fn, dna_fn, prm):
     # https://stackoverflow.com/a/18244485/310453
@@ -94,16 +91,20 @@ def run_triplexator(rna_fn, dna_fn, prm):
     head_str = out_arr.pop(0).lstrip('# ')
     head_arr = head_str.split('\t')
 
-    all_tpx = {}
+    all_scores = {}
     for line in out_arr:
         vals = line.split('\t')
         if( len(vals) != len(head_arr) ):
             logging.warning('Something is wrong: len(vals) != len(head_arr)')
             continue
         tpx = dict(zip(head_arr, vals))
+        score = int(tpx['Score'])
+
         rna_id, dna_id = tpx['Sequence-ID'], tpx['Duplex-ID']
-        all_tpx.setdefault(rna_id, {}).setdefault(dna_id, []).append(tpx)
-    return all_tpx
+        all_scores.setdefault(rna_id, {}).setdefault(dna_id, [])
+        all_scores[rna_id][dna_id].append(score)
+
+    return all_scores
 
 def read_tpx_summary(fn):
     with open(fn) as f:

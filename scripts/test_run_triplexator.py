@@ -12,24 +12,23 @@ class Test(unittest.TestCase):
         dna_len = 400
         prm_str = '-l 10 -e 10 -fr off'
 
-        # True estimates were computed by R (see 181211.F1000.poisson/)
-        # lambda <- predict(lambda_lm, data.frame(DNA_len = 400))
-        # ppois(1, lambda, lower.tail = FALSE)
-        # ppois(10, lambda, lower.tail = FALSE)
-        # ppois(100, lambda, lower.tail = FALSE)
+        # True estimates were computed by R (see 190110.F1000.poisson/)
+        # params <- data.frame(RNA_len = 1595, DNA_len = 400)
+        # lambda <- predict(lambda_lm, params)
+        # dpois(10, lambda) + ppois(10, lambda, lower.tail = FALSE)
         true_log_pvalue = {
-            1: -log10(0.1762126),
-            10: -log10(5.949311e-10),
-            100: -log10(3.539248e-173)}
+            0: -log10(1),
+            1: -log10(0.3359263),
+            10: -log10(2.511582e-11),
+            100: -log10(1.160769e-197)}
 
-        for num_tpx in [1, 10, 100]:
+        for num_tpx in true_log_pvalue.keys():
             pvalue = compute_pvalue(rna_len, dna_len, num_tpx, prm_str)
-            self.assertTrue(0 < pvalue < 1)
+            self.assertTrue(0 <= pvalue <= 1)
 
             log_diff = abs(-log10(pvalue) - true_log_pvalue[num_tpx])
             self.assertTrue(log_diff < 0.01)
 
         # Make sure the function returns -1 for unsupported params
-        self.assertEqual(compute_pvalue(100, dna_len, num_tpx, prm_str), -1)
         self.assertEqual(compute_pvalue(rna_len, dna_len, num_tpx, ''), -1)
 
