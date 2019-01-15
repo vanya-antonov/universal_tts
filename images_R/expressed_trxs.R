@@ -5,13 +5,13 @@ library(ggplot2)
 ###
 
 OUT_DIR <- "../images/"
-DATA_DIR <- "~/Projects_2018/2018/Yulia/DataLog/0524.F1000.expr_genes/data/"
+DATA_DIR <- "../data/"
 
 theme_set(theme_bw(base_size = 19))  # increase the font size: https://stackoverflow.com/a/11955412/310453
 
 ###
 
-info <- read.delim(paste0(DATA_DIR, '_all_genes.rpkm'), as.is=TRUE, header=FALSE)
+info <- read.delim(paste0(DATA_DIR, 'expressed_trxs.txt'), as.is=TRUE, header=FALSE)
 colnames(info) <- c('trx', 'name', 'len', 'gc', 'reads', 'rpkm')
 
 info <- subset(info, rpkm > 1)
