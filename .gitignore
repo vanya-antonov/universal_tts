@@ -2,10 +2,14 @@
 .DS_Store
 
 # Ignore Mac Icon files: https://stackoverflow.com/a/33974028/310453
-Icon[]
+Icon[
+]
 
 # Ignore R-history files
 .Rhistory
+
+# Ignore the ARCHIVE folder
+ARCHIVE
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
