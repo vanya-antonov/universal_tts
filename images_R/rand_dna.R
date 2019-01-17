@@ -5,6 +5,7 @@ library(cowplot)  # To have ggplots side-by-side: plot_grid()
 
 ###
 
+DATA_DIR <- '../data/'
 OUT_DIR <- "../images/"
 
 theme_set(theme_bw(base_size = 15))  # increase the font size: https://stackoverflow.com/a/11955412/310453
@@ -12,9 +13,9 @@ theme_set(theme_bw(base_size = 15))  # increase the font size: https://stackover
 ###
 
 # Number of triplexes ----
-DATA_DIR <- "~/Projects/2018/Yulia/DataLog/1119.F1000.rand_logtpot/data/"
+DATALOG_DIR <- "~/Projects/2018/Yulia/DataLog/1119.F1000.rand_logtpot/data/"
 
-all_data <- list.files(DATA_DIR, pattern=".*\\.tpx$", full.names=TRUE) %>%
+all_data <- list.files(DATALOG_DIR, pattern=".*\\.tpx$", full.names=TRUE) %>%
   lapply(read.table, as.is=TRUE, header = TRUE) %>%
   Reduce(rbind, .)
 
@@ -29,9 +30,7 @@ plot_num_tpx_vs_dna_len <- ggplot(all_data) +
 
 
 # lambda ----
-DATA_DIR <- "~/2019/2019/Yulia/DataLog/0110.F1000.poisson/data/"
-
-fn <- paste0(DATA_DIR, '_RAND_100_vs_100.tpx.gz')
+fn <- paste0(DATA_DIR, 'random_simulations.txt.gz')
 init_data <- read.table(fn, as.is=TRUE, header = TRUE)
 head(init_data)
 
