@@ -31,8 +31,8 @@ get_ggplot_from_fn <- function(bed_fn, name)
     ggtitle(title, subtitle = subT)
 }
 
-meg3_gg <- get_ggplot_from_fn('MEG3_peaks_hg38.bed', 'MEG3 peaks')
-bkg_gg <- get_ggplot_from_fn('Background_hg38.bed', 'Control DNA regions')
+meg3_gg <- get_ggplot_from_fn('chop_seq_hg38.bed', 'MEG3 ChOP-seq peaks')
+bkg_gg <- get_ggplot_from_fn('background_hg38.bed', 'Control DNA regions')
 
 plot_grid(meg3_gg, bkg_gg, ncol = 1, labels = 'auto')
-ggsave('meg3_bkg_len.pdf', path=OUT_DIR, width = 8, height = 8)
+ggsave('len_hist_chop_bkg.pdf', path=OUT_DIR, width = 8, height = 8)
