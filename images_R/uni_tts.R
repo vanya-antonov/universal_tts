@@ -100,11 +100,11 @@ plot_peak_len_hist <- ggplot(bed_df) +
 # PLOT ALL! ----
 plot_grid(
   plot_uni_tts_chop, plot_uni_tts_bkg,
-  nrow = 1, labels = 'auto')
-ggsave(paste0('uni_tts_chop_bkg.pdf'), path = OUT_DIR, width = 15, height = 6)
+  ncol = 1, labels = 'AUTO')
+ggsave(paste0('uni_tts_chop_bkg.pdf'), path = OUT_DIR, width = 7, height = 11)
 
 plot_grid(plot_peak_len_hist, plot_uni_tts_capture,
-          nrow = 1, labels = 'auto')
+          nrow = 1, labels = 'AUTO')
 ggsave('uni_tts_capture.pdf', path=OUT_DIR, width = 15, height = 6)
 
 
@@ -123,3 +123,15 @@ save_uni_tts_as_bed(peak_gg_df, "uni_tts_chop_seq_hg38.bed")
 save_uni_tts_as_bed(bkg_gg_df, "uni_tts_background_hg38.bed")
 save_uni_tts_as_bed(capture_gg_df, "uni_tts_capture_seq_hg38.bed")
 
+
+# Statistics ----
+total_peaks <- nrow(peak_gg_df)
+
+uni_tts_peak_n <- filter(peak_gg_df, type == "1_uni_tts") %>% nrow()
+uni_tts_bkg_n <- filter(bkg_gg_df, type == "1_uni_tts") %>% nrow()
+
+# 1107 (16.3%)
+sprintf('%d (%.1f%%)', uni_tts_peak_n, 100*uni_tts_peak_n/total_peaks)
+
+# 41 (0.6%)
+sprintf('%d (%.1f%%)', uni_tts_bkg_n, 100*uni_tts_bkg_n/total_peaks)
