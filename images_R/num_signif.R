@@ -14,7 +14,7 @@ theme_set(theme_bw(base_size = 19))  # increase the font size: https://stackover
 
 ###
 
-peak_df <- read.table(paste0(DATA_DIR, "pvalue_meg3_peaks.txt.gz"), header=TRUE, row.names=1)
+peak_df <- read.table(paste0(DATA_DIR, "pvalue_chop_seq.txt.gz"), header=TRUE, row.names=1)
 bkg_df <- read.table(paste0(DATA_DIR, "pvalue_background.txt.gz"), header=TRUE, row.names=1)
 
 adjust_pvalue_df <- function(df)
@@ -67,12 +67,11 @@ get_ggplot_from_gg_df <- function(gg_df, title)
 peak_gg_df <- get_gg_df_from_pvalue_df(peak_df)
 bkg_gg_df <- get_gg_df_from_pvalue_df(bkg_df)
 
-peak_ggplot <- get_ggplot_from_gg_df(peak_gg_df, paste(nrow(peak_df), 'MEG3 ChOP-seq peaks'))
-bkg_ggplot <- get_ggplot_from_gg_df(bkg_gg_df, paste(nrow(bkg_df), 'Control DNA regions'))
+get_ggplot_from_gg_df(peak_gg_df, paste(nrow(peak_df), 'MEG3 ChOP-seq peaks'))
+ggsave('num_signif_chop.pdf', path=OUT_DIR, width = 8, height = 5)
 
-plot_grid(peak_ggplot, bkg_ggplot,
-          ncol = 1, labels = 'auto')
-ggsave('meg3_bkg_pvalue.pdf', path=OUT_DIR, width = 8, height = 8)
+get_ggplot_from_gg_df(bkg_gg_df, paste(nrow(bkg_df), 'Control DNA regions'))
+ggsave('num_signif_bkg.pdf', path=OUT_DIR, width = 8, height = 5)
 
 
 # Statistics ----
