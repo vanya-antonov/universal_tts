@@ -5,6 +5,8 @@ library(plyr)      # revalue() renames factor levels
 library(ggplot2)
 library(cowplot)  # To have ggplots side-by-side: plot_grid()
 
+source("lib.R")   # get_log_pvalue_mtx(), PVALUE_THR
+
 ###
 
 DATA_DIR <- "../data/"
@@ -17,27 +19,14 @@ theme_set(theme_bw(base_size = 19))  # increase the font size: https://stackover
 peak_df <- read.table(paste0(DATA_DIR, "pvalue_chop_seq.txt.gz"), header=TRUE, row.names=1)
 bkg_df <- read.table(paste0(DATA_DIR, "pvalue_background.txt.gz"), header=TRUE, row.names=1)
 
-adjust_pvalue_df <- function(df)
-{
-  # https://stackoverflow.com/a/32934725/310453
-  pvalue_mtx <- as.matrix(df) %>%
-    as.vector %>% 
-#    p.adjust(method='fdr') %>% 
-    p.adjust(method="bonferroni") %>% 
-    matrix(ncol=ncol(df))
-  colnames(pvalue_mtx) <- colnames(df)
-  rownames(pvalue_mtx) <- rownames(df)
-  as.data.frame(pvalue_mtx)
-}
-
 get_gg_df_from_pvalue_df <- function(df)
 {
-  adjust_pvalue_df(df) %>%
+  get_log_pvalue_mtx(df) %>%
     t() %>%
     as.data.frame() %>%
     rownames_to_column('RNA') %>%
     # https://stackoverflow.com/a/47591044/310453
-    mutate(n_signif = rowSums(select(., -RNA) < 0.01)) %>%
+    mutate(n_signif = rowSums(select(., -RNA) > -log10(PVALUE_THR))) %>%
     select(RNA, n_signif)
 }
 
@@ -52,7 +41,7 @@ get_ggplot_from_gg_df <- function(gg_df, title)
     mutate(RNA_type = factor(RNA_type)) %>%
     mutate(RNA_type = revalue(RNA_type, rna_types_v))
   
-  subT = paste0('MEG3 interactions with adj p-value < 0.01 = ',
+  subT = paste0('MEG3 interactions with adj p-value < ', PVALUE_THR, ' = ',
                 filter(gg_df, RNA=='MEG3')$n_signif)
   ggplot(gg_df) +
     aes(x = RNA_type, y = n_signif) +
@@ -60,7 +49,7 @@ get_ggplot_from_gg_df <- function(gg_df, title)
     geom_jitter(width = 0.2, alpha = 0.5) +
     ylim(0, nrow(peak_df)) +
     xlab('Query RNA(s)') +
-    ylab('Number of DNA regions\nwith adj p-value < 0.01') +
+    ylab(paste('Number of DNA regions\nwith adj p-value <', PVALUE_THR)) +
     ggtitle(title, subtitle = subT)
 }
 
