@@ -106,3 +106,10 @@ sprintf('%d (%.0f%%)', rand_vs_peaks_median, 100*rand_vs_peaks_median/total_peak
 rand_vs_bkg_median <- as.integer(median(rand_vs_bkg_gg_df$n_signif))
 sprintf('%d (%.0f%%)', rand_vs_bkg_median, 100*rand_vs_bkg_median/total_peaks)
 
+###
+
+# 1000
+min(peak_gg_df$n_signif)
+
+# 118
+min(bkg_gg_df$n_signif)

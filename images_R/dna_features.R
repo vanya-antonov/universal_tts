@@ -70,3 +70,11 @@ bind_rows(chop_df, bkg_df) %>%
         axis.ticks.x = element_blank())
 ggsave('dna_features.pdf', path=OUT_DIR, width = 9, height = 6)
 
+
+# statistics ----
+total_uni <- filter(chop_df, uni_tts == TRUE) %>% nrow()
+
+# 480 (43%)
+many_purines_tts_n <- filter(chop_df, uni_tts == TRUE, poly_purine > 50) %>% nrow()
+sprintf('%d (%.0f%%)', many_purines_tts_n, 100*many_purines_tts_n/total_uni)
+
