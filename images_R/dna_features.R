@@ -74,7 +74,10 @@ ggsave('dna_features.pdf', path=OUT_DIR, width = 9, height = 6)
 # statistics ----
 total_uni <- filter(chop_df, uni_tts == TRUE) %>% nrow()
 
-# 480 (43%)
-many_purines_tts_n <- filter(chop_df, uni_tts == TRUE, poly_purine > 50) %>% nrow()
-sprintf('%d (%.0f%%)', many_purines_tts_n, 100*many_purines_tts_n/total_uni)
+# 1 bkg                3.43
+# 2 other              8.7 
+# 3 uni_tts           35.6 
+bind_rows(chop_df, bkg_df) %>%
+  group_by(type) %>%
+  summarise(median_poly_pur = median(poly_purine))
 
