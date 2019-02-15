@@ -3,7 +3,7 @@
 from math import log10
 import unittest
 
-from run_triplexator import compute_pvalue
+from triplexator_manager import compute_pvalue
 
 
 class Test(unittest.TestCase):
