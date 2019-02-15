@@ -24,54 +24,71 @@ read_all_data <- function(gc_fn, pur_fn, uni_tts_fn)
                        col.names = c('dna', 'len', 'purine', 'poly_purine'))
   uni_tts_v <- read.delim(paste0(DATA_DIR, uni_tts_fn), as.is=TRUE, header=FALSE)$V4
   inner_join(gc_df, pur_df, by = c('dna', 'len')) %>%
-    mutate(uni_tts = dna %in% uni_tts_v)
+    mutate(dna_type = ifelse(dna %in% uni_tts_v, 'uni_tts', 'other'))
+  # mutate(uni_tts = dna %in% uni_tts_v)
 }
 
 chop_df <- read_all_data('chop_seq.len_gc', 'chop_seq.len_purine', 'uni_tts_chop_seq_hg38.bed')
-bkg_df <- read_all_data('background.len_gc', 'background.len_purine', 'uni_tts_chop_seq_hg38.bed')
+chop_df$dna_group <- 'chop'
 
-chop_df <- mutate(chop_df, type = ifelse(uni_tts, 'uni_tts', 'other'))
-bkg_df$type <- 'bkg'
+bkg_df <- read_all_data('background.len_gc', 'background.len_purine', 'uni_tts_background_hg38.bed')
+bkg_df$dna_group <- 'bkg'
+
+capture_df <- read_all_data('capture_seq.len_gc', 'capture_seq.len_purine', 'uni_tts_capture_seq_hg38.bed')
+capture_df$dna_group <- 'capture'
+
+type_names = c('other' = 'Other regions',
+               'uni_tts' = 'Universal TTSs')
 
 feat_names <- c('gc' = 'GC content',
-                'purine' = 'Purine content',
-                'poly_purine' = 'Poly-purine content')
+                'purine' = 'GA content',
+                'poly_purine' = 'Poly-GA')
 
-dna_names <- c('bkg' = sprintf('Control DNA regions (n = %d)', nrow(bkg_df)),
-               'uni_tts' = sprintf('Universal ChOP-seq peaks (n = %d)', sum(chop_df$uni_tts)),
-               'other' = sprintf('Other ChOP-seq peaks (n = %d)', sum(!chop_df$uni_tts)))
+group_names <- c( 'chop' = 'ChOP-seq',
+                  'bkg' = 'Control',
+                  'capture' = 'Capture-seq')
 
-bind_rows(chop_df, bkg_df) %>%
+all_labels <- as_labeller(c(group_names, feat_names))
+
+bind_rows(chop_df, bkg_df, capture_df) %>%
+  mutate(poly_purine_len = len * poly_purine / 100) %>%
+  #gather('len', 'gc', 'purine', 'poly_purine', 'poly_purine_len', key = 'feature', value = 'value') %>%
   gather('gc', 'purine', 'poly_purine', key = 'feature', value = 'value') %>%
-  # Define the order of the sub-plots (facets)
+  # Define the order of features (rows)
   mutate(feature = factor(feature, levels = names(feat_names))) %>%
-  # Define the order of the boxplots
-  mutate(type = factor(type, levels = names(dna_names))) %>%
+  # Define the order of DNA groups (columns)
+  mutate(dna_group = factor(dna_group, levels = names(group_names))) %>%
+  # Define the order of boxplots (DNA types)
+  mutate(dna_type = factor(dna_type, levels = names(type_names))) %>%
   ggplot() +
-  aes(x = type, y = value/100, fill = type) +
+  aes(x = dna_type, y = value/100, fill = dna_type) +
   geom_boxplot(outlier.shape = NA) +
-  # geom_jitter(width = 0.2, alpha = 0.5, size = 0.5) +
-  facet_grid(. ~ feature, labeller = as_labeller(feat_names)) +
-  theme(legend.position="top") +
-  # Use custom colors and provide the legend description without modifying the underlying factor
-  # http://www.cookbook-r.com/Graphs/Legends_(ggplot2)/#with-fill-and-color
-  scale_fill_manual(name=NULL,  # Remove legend title
-                    values = c('white', 'red', 'gray'),
-                    breaks=names(dna_names),
-                    labels=dna_names) +
-  # Legend items should be in one column: https://stackoverflow.com/a/18400725/310453
-  guides(fill=guide_legend(ncol=1)) +
+  facet_grid(feature ~ dna_group, labeller = all_labels) +
   # Add the '%' sign to the Y-axis: https://stackoverflow.com/a/41098629/310453
   scale_y_continuous(labels = scales::percent_format()) +
-  # Remove X-labels: https://stackoverflow.com/a/35090981/310453
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
+  # Move legend to the top
+  theme(legend.position="top") +
+  # http://www.cookbook-r.com/Graphs/Legends_(ggplot2)/#with-fill-and-color
+  scale_fill_manual(name=NULL,                       # Remove legend title
+                    values = c('white', 'red'),      # Use custom colors
+                    breaks=rev(names(type_names)),   # Reverse the items in legend
+                    labels=type_names) +             # provide the legend description
+  # Remove axis labels: https://stackoverflow.com/a/35090981/310453
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x = element_blank())
-ggsave('dna_features.pdf', path=OUT_DIR, width = 9, height = 6)
+ggsave('dna_features_main.pdf', path=OUT_DIR, width = 6, height = 6)
 
 
 # statistics ----
+bind_rows(chop_df, bkg_df, capture_df) %>%
+  group_by(dna_group, dna_type) %>%
+  summarise(n = n(), median_poly_pur = median(poly_purine))
+
+  
+
+
 total_uni <- filter(chop_df, uni_tts == TRUE) %>% nrow()
 
 # 1 bkg                3.43
