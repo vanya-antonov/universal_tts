@@ -1,15 +1,5 @@
 
-library(dplyr)
-library(tidyr)  # gather()
-library(ggplot2)
-library(cowplot)   # To have ggplots side-by-side: plot_grid()
-
-###
-
-DATA_DIR <- "../data/"
-OUT_DIR <- "../images/"
-
-theme_set(theme_bw(base_size = 19))  # increase the font size: https://stackoverflow.com/a/11955412/310453
+source("lib.R")
 
 ###
 
