@@ -68,23 +68,14 @@ bind_rows(chop_df, bkg_df, capture_df) %>%
         axis.title.x = element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x = element_blank())
-ggsave('dna_features_main.pdf', path=OUT_DIR, width = 6, height = 6)
+ggsave('dna_features.pdf', path=OUT_DIR, width = 8, height = 8)
 
 
 # statistics ----
-bind_rows(chop_df, bkg_df, capture_df) %>%
-  group_by(dna_group, dna_type) %>%
-  summarise(n = n(), median_poly_pur = median(poly_purine))
-
-  
-
-
-total_uni <- filter(chop_df, uni_tts == TRUE) %>% nrow()
-
 # 1 bkg                3.43
 # 2 other              8.7 
 # 3 uni_tts           35.6 
 bind_rows(chop_df, bkg_df) %>%
-  group_by(type) %>%
+  group_by(dna_type) %>%
   summarise(median_poly_pur = median(poly_purine))
 
