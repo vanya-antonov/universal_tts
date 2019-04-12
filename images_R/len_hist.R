@@ -21,18 +21,19 @@ get_ggplot_from_fn <- function(bed_fn, name)
   nrow(bed_df)
   
   title <- sprintf("%s (n=%d)", name, nrow(bed_df))
-  subT <- sprintf("median length = %.1f bp, longest peak = %d bp",
+  subT <- sprintf("median length = %.1f bp, the longest peak = %d bp",
                   median(bed_df$len), max(bed_df$len))
   ggplot(bed_df) +
     aes(x = len) +
-    geom_histogram(binwidth = 30, col = "black", fill = "white") +
-    xlim(0, 2000) +
+    geom_histogram(binwidth = 50, col = "black", fill = "gray") +
+    xlim(0, 2500) +
     labs(x = "Peak length (bp)", y = "Number of peaks") +
     ggtitle(title, subtitle = subT)
 }
 
-meg3_gg <- get_ggplot_from_fn('chop_seq_hg38.bed', 'MEG3 ChOP-seq peaks')
+chop_gg <- get_ggplot_from_fn('chop_seq_hg38.bed', 'MEG3 ChOP-seq peaks')
 bkg_gg <- get_ggplot_from_fn('background_hg38.bed', 'Control DNA regions')
+capture_gg <- get_ggplot_from_fn('capture_seq_hg38.bed', 'Shared Capture-seq peaks')
 
-plot_grid(meg3_gg, bkg_gg, ncol = 1, labels = 'auto')
-ggsave('len_hist_chop_bkg.pdf', path=OUT_DIR, width = 8, height = 8)
+plot_grid(chop_gg, bkg_gg, capture_gg, ncol = 1, labels = 'AUTO')
+ggsave('len_hist.pdf', path=OUT_DIR, width = 8, height = 11)
