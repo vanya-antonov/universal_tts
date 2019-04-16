@@ -1,17 +1,9 @@
 
-library(dplyr)
-library(ggplot2)
+source("lib.R")
 
 ###
 
-OUT_DIR <- "../images/"
-DATA_DIR <- "../data/"
-
-theme_set(theme_bw(base_size = 19))  # increase the font size: https://stackoverflow.com/a/11955412/310453
-
-###
-
-info <- read.delim(paste0(DATA_DIR, 'expressed_trxs.txt'), as.is=TRUE, header=FALSE)
+info <- read.delim(paste0(DATA_DIR, 'all_expressed_trxs.txt'), as.is=TRUE, header=FALSE)
 colnames(info) <- c('trx', 'name', 'len', 'gc', 'reads', 'rpkm')
 
 info <- subset(info, rpkm > 1)
@@ -32,7 +24,7 @@ ggplot(other_trxs) +
   xlab("Transcript GC content (%)") +
   ylab("Transcript length (nt)") +
   ggtitle(sprintf("Total number of transcripts with RPKM > %.0f: %d", min(info$rpkm), nrow(info)),
-          subtitle = sprintf("Number of selected transcripts: %d", nrow(very_similar)))
+          subtitle = sprintf("Number of selected transcripts (red dots) = %d", nrow(very_similar)))
 
 # Increase dpi for better resolution: https://stackoverflow.com/q/47222764/310453
 ggsave("expressed_trxs.png", path=OUT_DIR, dpi = 150)
