@@ -40,9 +40,9 @@ H = 6
 get_coverage_gg('coverage_chop_uni.txt')
 ggsave('coverage_chop_uni.pdf', path = OUT_DIR, width = W, height = H)
 
-get_coverage_gg('coverage_chop_other.txt')
-ggsave('coverage_chop_other.pdf', path = OUT_DIR, width = W, height = H)
+get_coverage_gg('coverage_bkg_uni.txt')
+ggsave('coverage_bkg_uni.pdf', path = OUT_DIR, width = W, height = H)
 
-get_coverage_gg('coverage_bkg_other.txt')
-ggsave('coverage_bkg_other.pdf', path = OUT_DIR, width = W, height = H)
+get_coverage_gg('coverage_capture_uni.txt')
+ggsave('coverage_capture_uni.pdf', path = OUT_DIR, width = W, height = H)
 
